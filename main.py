@@ -25,7 +25,7 @@ creator.create("Individual", list, fitness=creator.FitnessMax)
 # Create toolbox
 toolbox = base.Toolbox()
 toolbox.register("attr_float", random.uniform, 0, 1)
-toolbox.register("individual", tools.initCycle, creator.Individual, (toolbox.attr_float, toolbox.attr_float, toolbox.attr_float, toolbox.attr_float, toolbox.attr_float, toolbox.attr_float, toolbox.attr_float, toolbox.attr_float), 8)
+toolbox.register("individual", tools.initCycle, creator.Individual, (toolbox.attr_float,) * 20, 20)
 toolbox.register("population", tools.initRepeat, list, toolbox.individual)
 
 def eval_individual(individual):
@@ -40,7 +40,7 @@ def eval_individual(individual):
     ramp_shape = create_ramp(space)
     obstacle_shapes = create_obstacles(space, positions)
 
-    hit_obstacles = [False, False, False, False]
+    hit_obstacles = [False] * 10
 
     # Run simulation and check if the ball hits all obstacles
     for _ in range(500):  # Limit the iterations to a safe number
@@ -71,9 +71,9 @@ def create_ramp(space):
 
 def create_obstacles(space, positions):
     obstacles = []
-    for i in range(4):
+    for i in range(10):
         body = pymunk.Body(body_type=pymunk.Body.STATIC)
-        shape = pymunk.Circle(body, 15)  # Solid circle with radius 15
+        shape = pymunk.Circle(body, 5)  # Solid circle with radius 5
         body.position = (positions[i*2] * 600, positions[i*2 + 1] * 200 + 50)  # Varying positions
         space.add(body, shape)
         obstacles.append(shape)
@@ -83,9 +83,10 @@ def draw_ramp(ramp_shape):
     points = [(int(x), int(y)) for x, y in ramp_shape.get_vertices()]
     pygame.draw.polygon(screen, (0, 255, 0), points)
 
-def draw_obstacles(obstacle_shapes):
-    for obstacle_shape in obstacle_shapes:
-        pygame.draw.circle(screen, (0, 0, 255), (int(obstacle_shape.body.position.x), int(obstacle_shape.body.position.y)), 15)
+def draw_obstacles(obstacle_shapes, hit_obstacles):
+    for i, obstacle_shape in enumerate(obstacle_shapes):
+        color = (0, 255, 0) if hit_obstacles[i] else (0, 0, 255)
+        pygame.draw.circle(screen, color, (int(obstacle_shape.body.position.x), int(obstacle_shape.body.position.y)), 5)
 
 def visualize_best(most_fit):
     space = pymunk.Space()
@@ -99,14 +100,19 @@ def visualize_best(most_fit):
     ramp_shape = create_ramp(space)
     obstacle_shapes = create_obstacles(space, positions)
 
+    hit_obstacles = [False] * 10
+
     # Run simulation and visualize the best individual
     for _ in range(500):  # Limit the iterations to a safe number
         space.step(0.02)
         if body.position.y > 600 or (body.position.y >= 380 and body.position.x >= 600):
             break
+        for i, obstacle_shape in enumerate(obstacle_shapes):
+            if shape.shapes_collide(obstacle_shape).points:
+                hit_obstacles[i] = True
         screen.fill((0, 0, 0))
         draw_ramp(ramp_shape)
-        draw_obstacles(obstacle_shapes)
+        draw_obstacles(obstacle_shapes, hit_obstacles)
         pygame.draw.circle(screen, (255, 0, 0), (int(body.position.x), int(body.position.y)), 10)
         pygame.display.flip()
         clock.tick(60)
